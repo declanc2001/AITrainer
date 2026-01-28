@@ -145,6 +145,27 @@ def score_golfer(uploaded_files):
 st.set_page_config(page_title="Golf Swing Repeatability", layout="centered")
 st.title("🏌️ Golf Swing Repeatability Scorer")
 st.write("Upload **4 swing videos** for a golfer and press **Compute** to get a repeatability score (0–1).")
+st.write("How is this score calculated?
+
+This tool measures how consistent your golf swing is across multiple attempts.
+
+For each uploaded swing video, the system:
+
+Detects your body position using pose tracking
+
+Estimates your shoulder rotation over time
+
+Extracts key swing features such as:
+
+Maximum shoulder turn
+
+How quickly you reach that peak
+
+Average rotation during the swing
+
+These features are then compared across all uploaded swings.
+If your swings are similar each time, your repeatability score will be higher.
+If they vary a lot, the score will be lower.")
 
 files = st.file_uploader("Upload 4 swing videos (.mp4)", type=["mp4", "mov", "m4v"], accept_multiple_files=True)
 
@@ -158,5 +179,12 @@ if st.button("Compute repeatability", type="primary", disabled=(not files or len
     st.metric("Repeatability (0–1)", f"{score:.3f}")
     st.subheader("Extracted features (per swing)")
     st.dataframe(df, use_container_width=True)
+st.subheader("What does this score mean?")
 
+if score < 0.2:
+    st.error("❌ Swing needs work — high variation between swings. Time to hit the driving range.")
+elif score < 0.6:
+    st.warning("⚠️ Not bad — some consistency, but there is still room for improvement.")
+else:
+    st.success("✅ Very good — strong repeatability and reliable swing mechanics.")
     st.caption("Note: This is a 2D pose-based proxy metric. Results depend on camera angle and visibility.")
