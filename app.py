@@ -1,14 +1,11 @@
+import tempfile
+import numpy as np
+import pandas as pd
+import cv2
 import mediapipe as mp
 import streamlit as st
-import inspect
 
-st.write("mediapipe version:", getattr(mp, "__version__", "no __version__"))
-st.write("mediapipe module path:", getattr(mp, "__file__", "no __file__"))
-st.write("has solutions:", hasattr(mp, "solutions"))
-
-# hard fail with clear message
-if not hasattr(mp, "solutions"):
-    raise RuntimeError("mediapipe imported but mp.solutions is missing. Likely module shadowing or broken install.")
+mp_pose = mp.solutions.pose
 
 # ---------- Core math ----------
 def angle_between(v1, v2):
