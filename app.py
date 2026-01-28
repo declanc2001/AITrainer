@@ -1,27 +1,44 @@
-import tempfile
+import cv2
 import numpy as np
 import pandas as pd
-import cv2
 import mediapipe as mp
-import streamlit as st
+import requests
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-mp_pose = mp.solutions.pose
+MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
 
-# ---------- Core math ----------
-def angle_between(v1, v2):
-    denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
-    if denom == 0:
-        return np.nan
-    cosang = np.dot(v1, v2) / denom
-    return np.degrees(np.arccos(np.clip(cosang, -1.0, 1.0)))
+def download_model(path="pose_landmarker.task"):
+    # Download once per container
+    try:
+        with open(path, "rb"):
+            return path
+    except FileNotFoundError:
+        r = requests.get(MODEL_URL, timeout=60)
+        r.raise_for_status()
+        with open(path, "wb") as f:
+            f.write(r.content)
+        return path
+
+@st.cache_resource
+def make_landmarker():
+    model_path = download_model()
+    base_options = python.BaseOptions(model_asset_path=model_path)
+    options = vision.PoseLandmarkerOptions(
+        base_options=base_options,
+        running_mode=vision.RunningMode.IMAGE,
+        num_poses=1
+    )
+    return vision.PoseLandmarker.create_from_options(options)
 
 def extract_angle_series(video_path):
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
 
-    pose = mp_pose.Pose(static_image_mode=False, model_complexity=1)
+    landmarker = make_landmarker()
 
-    angles, times = [], []
+    angles = []
+    times = []
     frame_idx = 0
 
     while True:
@@ -29,23 +46,31 @@ def extract_angle_series(video_path):
         if not ok:
             break
 
+        h, w = frame.shape[:2]
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = pose.process(rgb)
 
-        if results.pose_landmarks:
-            lm = results.pose_landmarks.landmark
-            h, w = frame.shape[:2]
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        result = landmarker.detect(mp_image)
 
-            def pt(idx):
-                p = lm[idx]
-                return np.array([p.x * w, p.y * h], dtype=np.float32)
+        if result.pose_landmarks and len(result.pose_landmarks) > 0:
+            lm = result.pose_landmarks[0]  # first pose
 
-            ls = pt(mp_pose.PoseLandmark.LEFT_SHOULDER)
-            rs = pt(mp_pose.PoseLandmark.RIGHT_SHOULDER)
-            lh = pt(mp_pose.PoseLandmark.LEFT_HIP)
-            rh = pt(mp_pose.PoseLandmark.RIGHT_HIP)
+            def pt(i):
+                return np.array([lm[i].x * w, lm[i].y * h], dtype=np.float32)
 
-            ang = angle_between(ls - rs, lh - rh)
+            # MediaPipe landmark indices (Pose):
+            # 11 L_SHOULDER, 12 R_SHOULDER, 23 L_HIP, 24 R_HIP
+            ls = pt(11); rs = pt(12); lh = pt(23); rh = pt(24)
+
+            shoulder_vec = ls - rs
+            hip_vec = lh - rh
+
+            denom = (np.linalg.norm(shoulder_vec) * np.linalg.norm(hip_vec))
+            if denom == 0:
+                ang = np.nan
+            else:
+                cosang = np.dot(shoulder_vec, hip_vec) / denom
+                ang = float(np.degrees(np.arccos(np.clip(cosang, -1.0, 1.0))))
         else:
             ang = np.nan
 
@@ -57,8 +82,8 @@ def extract_angle_series(video_path):
 
     times = np.array(times, dtype=float)
     angles = pd.Series(angles).interpolate(limit_direction="both").to_numpy(dtype=float)
-
     return times, angles
+
 
 def features_from_series(times, angles):
     # ignore first 0.25 sec
