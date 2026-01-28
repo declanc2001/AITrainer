@@ -147,6 +147,12 @@ st.title("🏌️ Golf Swing Repeatability Scorer")
 st.write("Upload **4 swing videos** for a golfer and press **Compute** to get a repeatability score (0–1).")
 st.write("How is this score calculated?")
 
+if "score" not in st.session_state:
+    st.session_state.score = None
+if "df" not in st.session_state:
+    st.session_state.df = None
+
+
 files = st.file_uploader("Upload 4 swing videos (.mp4)", type=["mp4", "mov", "m4v"], accept_multiple_files=True)
 
 if files and len(files) != 4:
@@ -155,16 +161,27 @@ if files and len(files) != 4:
 if st.button("Compute repeatability", type="primary", disabled=(not files or len(files) != 4)):
     with st.spinner("Analyzing swings..."):
         score, df = score_golfer(files)
+        st.session_state.score = score
+        st.session_state.df = df
+
+
+   if st.session_state.score is not None:
+    score = st.session_state.score
+    df = st.session_state.df
 
     st.metric("Repeatability (0–1)", f"{score:.3f}")
+
+    st.subheader("What does this score mean?")
+    if score < 0.2:
+        st.error("❌ Swing needs work — high variation between swings. Time to hit the driving range.")
+    elif score < 0.6:
+        st.warning("⚠️ Not bad — some consistency, but there is still room for improvement.")
+    else:
+        st.success("✅ Very good — strong repeatability and reliable swing mechanics.")
+
     st.subheader("Extracted features (per swing)")
     st.dataframe(df, use_container_width=True)
-st.subheader("What does this score mean?")
 
-if score < 0.2:
-    st.error("❌ Swing needs work — high variation between swings. Time to hit the driving range.")
-elif score < 0.6:
-    st.warning("⚠️ Not bad — some consistency, but there is still room for improvement.")
-else:
-    st.success("✅ Very good — strong repeatability and reliable swing mechanics.")
     st.caption("Note: This is a 2D pose-based proxy metric. Results depend on camera angle and visibility.")
+else:
+    st.info("Upload 4 videos and click **Compute repeatability** to see your score.")
