@@ -172,7 +172,7 @@ if st.session_state.score is not None:
     st.metric("Repeatability (0–1)", f"{score:.3f}")
 
     st.subheader("What does this score mean?")
-    if score < 0.2:
+    if score < 0.3:
         st.error("❌ Swing needs work — high variation between swings. Time to hit the driving range.")
     elif score < 0.6:
         st.warning("⚠️ Not bad — some consistency, but there is still room for improvement.")
