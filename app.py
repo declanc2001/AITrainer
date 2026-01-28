@@ -165,7 +165,7 @@ if st.button("Compute repeatability", type="primary", disabled=(not files or len
         st.session_state.df = df
 
 
-   if st.session_state.score is not None:
+if st.session_state.score is not None:
     score = st.session_state.score
     df = st.session_state.df
 
