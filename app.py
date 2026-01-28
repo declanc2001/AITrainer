@@ -145,7 +145,7 @@ def score_golfer(uploaded_files):
 st.set_page_config(page_title="Golf Swing Repeatability", layout="centered")
 st.title("🏌️ Golf Swing Repeatability Scorer")
 st.write("Upload **4 swing videos** for a golfer and press **Compute** to get a repeatability score (0–1).")
-st.write("I am Declan Carr-Mcelhatton, a final year student at Portsmouth University and this is my golf swing analysis tool, mediapipe pose selection is used to measure how consistent a golfers movement is")
+st.write("I am Declan Carr-Mcelhatton, a final year student at Portsmouth University and this is my golf swing analysis tool, mediapipe pose selection is used to measure how consistent a golfers movement is, video submitted must be consistent with camera angle and external noise/movement otherwise results will vary wildly.")
 
 if "score" not in st.session_state:
     st.session_state.score = None
